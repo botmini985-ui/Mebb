@@ -15,6 +15,8 @@ import Profile from "./pages/Profile";
 import UserProfile from "./pages/UserProfile";
 import Notifications from "./pages/Notifications";
 import NotFound from "./pages/NotFound";
+import Settings from "./pages/Settings";
+import CreateGroup from "./pages/CreateGroup";
 
 const queryClient = new QueryClient();
 
@@ -36,6 +38,8 @@ const App = () => (
             <Route path="/profile" element={<Profile />} />
             <Route path="/user/:userId" element={<UserProfile />} />
             <Route path="/notifications" element={<Notifications />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/create-group" element={<CreateGroup />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

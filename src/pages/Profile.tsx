@@ -3,12 +3,12 @@ import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import BottomNav from "@/components/BottomNav";
 import PostCard from "@/components/PostCard";
-import { Settings, LogOut, Grid3X3, Bookmark, Lock } from "lucide-react";
+import { Settings, Grid3X3, Bookmark, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { useNavigate } from "react-router-dom";
 
 export default function Profile() {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const navigate = useNavigate();
   const [profile, setProfile] = useState<any>(null);
   const [posts, setPosts] = useState<any[]>([]);
@@ -28,10 +28,10 @@ export default function Profile() {
     setProfile(p);
     setBio(p?.bio || "");
 
-    const [{ count: fc }, { count: fgc }, { data: postsData }] = await Promise.all([
+      const [{ count: fc }, { count: fgc }, { data: postsData }] = await Promise.all([
       supabase.from("follows").select("*", { count: "exact", head: true }).eq("following_id", user.id).eq("status", "accepted"),
       supabase.from("follows").select("*", { count: "exact", head: true }).eq("follower_id", user.id).eq("status", "accepted"),
-      supabase.from("posts").select("*, profiles!posts_user_id_fkey(username, display_name, avatar_url)").eq("user_id", user.id).order("created_at", { ascending: false }),
+      supabase.from("posts").select("*").eq("user_id", user.id).order("created_at", { ascending: false }),
     ]);
     setFollowers(fc || 0);
     setFollowing(fgc || 0);
@@ -45,10 +45,7 @@ export default function Profile() {
     toast.success("Bio mise à jour !");
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/login");
-  };
+  
 
   if (!profile) return <div className="min-h-screen flex items-center justify-center"><div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin" /></div>;
 
@@ -58,8 +55,7 @@ export default function Profile() {
         <div className="flex items-center justify-between px-4 h-14 max-w-lg mx-auto">
           <h2 className="font-display font-bold text-foreground">@{profile.username}</h2>
           <div className="flex items-center gap-2">
-            <button className="p-2 text-muted-foreground hover:text-foreground"><Settings size={20} /></button>
-            <button onClick={handleSignOut} className="p-2 text-muted-foreground hover:text-destructive"><LogOut size={20} /></button>
+            <button onClick={() => navigate("/settings")} className="p-2 text-muted-foreground hover:text-foreground"><Settings size={20} /></button>
           </div>
         </div>
       </header>

@@ -24,23 +24,35 @@ export default function Home() {
 
     let query = supabase
       .from("posts")
-      .select("*, profiles!posts_user_id_fkey(username, display_name, avatar_url)")
+      .select("*")
       .order("created_at", { ascending: false })
       .limit(50);
 
     if (tab === "foryou") {
-      // Sort by engagement (boosted first, then by likes)
       query = supabase
         .from("posts")
-        .select("*, profiles!posts_user_id_fkey(username, display_name, avatar_url)")
+        .select("*")
         .order("is_boosted", { ascending: false })
         .order("like_count", { ascending: false })
         .order("created_at", { ascending: false })
         .limit(50);
     }
 
-    const { data } = await query;
-    setPosts(data || []);
+    const { data: postsData } = await query;
+
+    // Fetch profiles for all posts
+    const userIds = [...new Set((postsData || []).map((p: any) => p.user_id))];
+    const { data: profilesData } = await supabase
+      .from("profiles")
+      .select("user_id, username, display_name, avatar_url")
+      .in("user_id", userIds);
+
+    const profileMap = new Map((profilesData || []).map((p: any) => [p.user_id, p]));
+    const enriched = (postsData || []).map((post: any) => ({
+      ...post,
+      profiles: profileMap.get(post.user_id) || null,
+    }));
+    setPosts(enriched);
 
     if (user) {
       const [likes, favs] = await Promise.all([

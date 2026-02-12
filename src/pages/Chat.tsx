@@ -56,7 +56,7 @@ export default function Chat() {
       <header className="sticky top-0 z-40 glass border-b border-border">
         <div className="flex items-center justify-between px-4 h-14 max-w-lg mx-auto">
           <h2 className="font-display font-bold text-foreground text-lg">Messages</h2>
-          <button className="p-2 text-primary"><Plus size={22} /></button>
+          <button onClick={() => navigate("/create-group")} className="p-2 text-primary"><Plus size={22} /></button>
         </div>
         <div className="px-4 pb-3 max-w-lg mx-auto">
           <div className="relative">

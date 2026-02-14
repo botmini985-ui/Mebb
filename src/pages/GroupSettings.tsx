@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import {
   ArrowLeft, Users, Shield, Crown, UserMinus, UserPlus,
   LogOut, Trash2, Edit2, Check, X, Search, Link2, Copy,
-  MoreVertical, MessageCircle, Lock, Unlock
+  MoreVertical, MessageCircle, Lock, Unlock, Camera
 } from "lucide-react";
 
 export default function GroupSettings() {
@@ -27,6 +27,8 @@ export default function GroupSettings() {
   const [showPermissions, setShowPermissions] = useState(false);
   const [pendingMembers, setPendingMembers] = useState<any[]>([]);
   const [memberMenu, setMemberMenu] = useState<string | null>(null);
+  const [bannedIds, setBannedIds] = useState<Set<string>>(new Set());
+  const avatarRef = useRef<HTMLInputElement>(null);
 
   const myMembership = members.find((m) => m.user_id === user?.id);
   const isOwner = myMembership?.role === "owner";
@@ -36,6 +38,7 @@ export default function GroupSettings() {
     if (groupId) {
       fetchGroup();
       fetchMembers();
+      fetchBanned();
     }
   }, [groupId]);
 
@@ -50,17 +53,22 @@ export default function GroupSettings() {
 
   const fetchMembers = async () => {
     const { data } = await supabase.from("group_members").select("*").eq("group_id", groupId!);
-    const active = (data || []).filter((m) => m.status !== "pending");
-    const pending = (data || []).filter((m) => m.status === "pending");
+    const active = (data || []).filter((m: any) => m.status !== "pending");
+    const pending = (data || []).filter((m: any) => m.status === "pending");
     setMembers(active);
     setPendingMembers(pending);
     if (data?.length) {
-      const userIds = data.map((m) => m.user_id);
+      const userIds = data.map((m: any) => m.user_id);
       const { data: profs } = await supabase.from("profiles").select("*").in("user_id", userIds);
       const map: Record<string, any> = {};
-      (profs || []).forEach((p) => (map[p.user_id] = p));
+      (profs || []).forEach((p: any) => (map[p.user_id] = p));
       setProfiles(map);
     }
+  };
+
+  const fetchBanned = async () => {
+    const { data } = await supabase.from("banned_group_members").select("user_id").eq("group_id", groupId!);
+    setBannedIds(new Set((data || []).map((b: any) => b.user_id)));
   };
 
   const saveGroupInfo = async () => {
@@ -73,7 +81,23 @@ export default function GroupSettings() {
 
   const canEdit = isAdmin || !group?.admin_only_edit;
 
-  // Permissions toggles
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !groupId) return;
+    if (!file.type.startsWith("image/")) { toast.error("Image uniquement"); return; }
+    if (file.size > 5 * 1024 * 1024) { toast.error("Max 5MB"); return; }
+
+    const ext = file.name.split(".").pop();
+    const path = `${user.id}/group_${groupId}_${Date.now()}.${ext}`;
+    const { error } = await supabase.storage.from("media").upload(path, file);
+    if (error) { toast.error("Erreur upload"); return; }
+
+    const { data: urlData } = supabase.storage.from("media").getPublicUrl(path);
+    await supabase.from("groups").update({ avatar_url: urlData.publicUrl }).eq("id", groupId);
+    setGroup((g: any) => ({ ...g, avatar_url: urlData.publicUrl }));
+    toast.success("Photo du groupe mise à jour");
+  };
+
   const toggleAdminOnlyEdit = async () => {
     const newVal = !group.admin_only_edit;
     await supabase.from("groups").update({ admin_only_edit: newVal }).eq("id", groupId!);
@@ -95,7 +119,6 @@ export default function GroupSettings() {
     toast.success(newVal ? "Approbation requise" : "Approbation désactivée");
   };
 
-  // Invite link
   const generateInviteLink = async () => {
     const code = Math.random().toString(36).substring(2, 10);
     await supabase.from("groups").update({ invite_code: code }).eq("id", groupId!);
@@ -110,7 +133,6 @@ export default function GroupSettings() {
     toast.success("Lien copié !");
   };
 
-  // Approve pending member
   const approveMember = async (memberId: string) => {
     await supabase.from("group_members").update({ status: "active" }).eq("id", memberId);
     toast.success("Membre approuvé");
@@ -131,7 +153,7 @@ export default function GroupSettings() {
   };
 
   const demoteToMember = async (userId: string) => {
-    const target = members.find((m) => m.user_id === userId);
+    const target = members.find((m: any) => m.user_id === userId);
     if (target?.role === "owner") { toast.error("Impossible"); return; }
     await supabase.from("group_members").update({ role: "member" }).eq("group_id", groupId!).eq("user_id", userId);
     toast.success("Rétrogradé");
@@ -139,11 +161,17 @@ export default function GroupSettings() {
     fetchMembers();
   };
 
-  const removeMember = async (userId: string) => {
-    const target = members.find((m) => m.user_id === userId);
+  const removeMember = async (userId: string, ban: boolean = false) => {
+    const target = members.find((m: any) => m.user_id === userId);
     if (target?.role === "owner") { toast.error("Impossible"); return; }
     await supabase.from("group_members").delete().eq("group_id", groupId!).eq("user_id", userId);
-    toast.success("Membre retiré");
+    if (ban && user) {
+      await supabase.from("banned_group_members").insert({ group_id: groupId!, user_id: userId, banned_by: user.id });
+      setBannedIds((prev) => new Set([...prev, userId]));
+      toast.success("Membre banni du groupe");
+    } else {
+      toast.success("Membre retiré");
+    }
     setMemberMenu(null);
     fetchMembers();
   };
@@ -151,8 +179,8 @@ export default function GroupSettings() {
   const leaveGroup = async () => {
     if (!user) return;
     if (isOwner) {
-      const nextOwner = members.find((m) => m.user_id !== user.id && m.role === "admin")
-        || members.find((m) => m.user_id !== user.id);
+      const nextOwner = members.find((m: any) => m.user_id !== user.id && m.role === "admin")
+        || members.find((m: any) => m.user_id !== user.id);
       if (nextOwner) {
         await supabase.from("group_members").update({ role: "owner" }).eq("id", nextOwner.id);
       }
@@ -172,14 +200,15 @@ export default function GroupSettings() {
     setSearchQuery(q);
     if (q.length < 2) { setSearchResults([]); return; }
     const { data } = await supabase.from("profiles").select("*").ilike("username", `%${q}%`).limit(10);
-    const memberIds = members.map((m) => m.user_id);
-    setSearchResults((data || []).filter((p) => !memberIds.includes(p.user_id)));
+    const memberIds = members.map((m: any) => m.user_id);
+    setSearchResults((data || []).filter((p: any) => !memberIds.includes(p.user_id) && !bannedIds.has(p.user_id)));
   };
 
   const addMember = async (userId: string) => {
+    if (bannedIds.has(userId)) { toast.error("Cet utilisateur est banni de ce groupe"); return; }
     await supabase.from("group_members").insert({ group_id: groupId!, user_id: userId, role: "member", status: "active" });
     toast.success("Membre ajouté");
-    setSearchResults((prev) => prev.filter((p) => p.user_id !== userId));
+    setSearchResults((prev) => prev.filter((p: any) => p.user_id !== userId));
     fetchMembers();
   };
 
@@ -210,8 +239,23 @@ export default function GroupSettings() {
         {/* Group Info */}
         <div className="space-y-4">
           <div className="flex items-center justify-center">
-            <div className="w-20 h-20 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-2xl">
-              {group?.name?.[0]?.toUpperCase() || "G"}
+            <div className="relative">
+              <div className="w-20 h-20 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-2xl overflow-hidden">
+                {group?.avatar_url ? (
+                  <img src={group.avatar_url} className="w-full h-full object-cover" alt="" />
+                ) : (
+                  group?.name?.[0]?.toUpperCase() || "G"
+                )}
+              </div>
+              {canEdit && (
+                <button
+                  onClick={() => avatarRef.current?.click()}
+                  className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full gradient-primary flex items-center justify-center text-primary-foreground"
+                >
+                  <Camera size={14} />
+                </button>
+              )}
+              <input ref={avatarRef} type="file" accept="image/*" className="hidden" onChange={handleAvatarUpload} />
             </div>
           </div>
 
@@ -260,7 +304,6 @@ export default function GroupSettings() {
 
             {showPermissions && (
               <div className="bg-card rounded-2xl border border-border overflow-hidden divide-y divide-border">
-                {/* Admin only edit name/desc/icon */}
                 <button onClick={toggleAdminOnlyEdit} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
                   <Lock size={18} className="text-muted-foreground" />
                   <div className="flex-1">
@@ -274,7 +317,6 @@ export default function GroupSettings() {
                   </div>
                 </button>
 
-                {/* Who can send messages */}
                 <button onClick={toggleIsOpen} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
                   <MessageCircle size={18} className="text-muted-foreground" />
                   <div className="flex-1">
@@ -288,7 +330,6 @@ export default function GroupSettings() {
                   </div>
                 </button>
 
-                {/* Require admin approval */}
                 <button onClick={toggleRequireApproval} className="w-full flex items-center gap-3 px-4 py-3.5 text-left">
                   <Unlock size={18} className="text-muted-foreground" />
                   <div className="flex-1">
@@ -339,7 +380,7 @@ export default function GroupSettings() {
               En attente ({pendingMembers.length})
             </h3>
             <div className="bg-card rounded-2xl border border-border overflow-hidden divide-y divide-border">
-              {pendingMembers.map((m) => {
+              {pendingMembers.map((m: any) => {
                 const prof = profiles[m.user_id];
                 return (
                   <div key={m.id} className="flex items-center gap-3 px-4 py-3">
@@ -380,7 +421,7 @@ export default function GroupSettings() {
                     className="w-full bg-secondary border border-border rounded-xl pl-9 pr-4 py-2.5 text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary/50"
                     placeholder="Rechercher par username..." />
                 </div>
-                {searchResults.map((p) => (
+                {searchResults.map((p: any) => (
                   <div key={p.user_id} className="flex items-center gap-3 px-3 py-2 bg-card rounded-xl border border-border">
                     <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold text-xs">
                       {p.username?.[0]?.toUpperCase()}
@@ -406,18 +447,18 @@ export default function GroupSettings() {
           </h3>
           <div className="bg-card rounded-2xl border border-border overflow-hidden divide-y divide-border">
             {members
-              .sort((a, b) => {
+              .sort((a: any, b: any) => {
                 const order: Record<string, number> = { owner: 0, admin: 1, member: 2 };
                 return (order[a.role] ?? 2) - (order[b.role] ?? 2);
               })
-              .map((m) => {
+              .map((m: any) => {
                 const prof = profiles[m.user_id];
                 const isMe = m.user_id === user?.id;
                 const canManage = isAdmin && !isMe && m.role !== "owner";
                 return (
                   <div key={m.id} className="flex items-center gap-3 px-4 py-3 relative">
                     <div
-                      className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold text-sm cursor-pointer"
+                      className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold text-sm cursor-pointer overflow-hidden"
                       onClick={() => !isMe && navigate(`/user/${m.user_id}`)}
                     >
                       {prof?.avatar_url ? (
@@ -449,8 +490,8 @@ export default function GroupSettings() {
                                 <Shield size={14} /> Rétrograder
                               </button>
                             )}
-                            <button onClick={() => removeMember(m.user_id)} className="w-full px-4 py-2 text-sm text-left hover:bg-secondary flex items-center gap-2 text-destructive">
-                              <UserMinus size={14} /> Retirer du groupe
+                            <button onClick={() => removeMember(m.user_id, true)} className="w-full px-4 py-2 text-sm text-left hover:bg-secondary flex items-center gap-2 text-destructive">
+                              <UserMinus size={14} /> Supprimer (bannir)
                             </button>
                           </div>
                         )}

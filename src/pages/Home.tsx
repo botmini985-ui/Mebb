@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import PostCard from "@/components/PostCard";
 import BottomNav from "@/components/BottomNav";
+import StoriesBar from "@/components/StoriesBar";
 import { Bell, Flame } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
@@ -94,6 +95,11 @@ export default function Home() {
           ))}
         </div>
       </header>
+
+      {/* Stories */}
+      <div className="max-w-lg mx-auto border-b border-border">
+        <StoriesBar />
+      </div>
 
       {/* Feed */}
       <main className="max-w-lg mx-auto px-4 py-4 space-y-4">

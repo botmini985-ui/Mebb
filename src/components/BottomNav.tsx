@@ -4,9 +4,10 @@ import { useNavigate, useLocation } from "react-router-dom";
 const navItems = [
   { icon: Home, path: "/", label: "Home" },
   { icon: Search, path: "/explore", label: "Explore" },
+  { icon: PlusSquare, path: "/create", label: "Créer" },
   { icon: Play, path: "/loop", label: "Loop" },
   { icon: MessageCircle, path: "/chat", label: "Chat" },
-  { icon: User, path: "/profile", label: "Profile" },
+  { icon: User, path: "/profile", label: "Profil" },
 ];
 
 export default function BottomNav() {

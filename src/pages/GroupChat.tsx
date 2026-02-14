@@ -102,8 +102,12 @@ export default function GroupChat() {
           <button onClick={() => navigate("/chat")} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft size={22} />
           </button>
-          <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-sm">
-            {group?.name?.[0]?.toUpperCase() || "G"}
+          <div className="w-9 h-9 rounded-full bg-accent flex items-center justify-center text-accent-foreground font-bold text-sm overflow-hidden">
+            {group?.avatar_url ? (
+              <img src={group.avatar_url} className="w-full h-full object-cover" alt="" />
+            ) : (
+              group?.name?.[0]?.toUpperCase() || "G"
+            )}
           </div>
           <div className="flex-1 min-w-0" onClick={() => navigate(`/group/${groupId}/settings`)} role="button">
             <p className="font-semibold text-foreground text-sm truncate">{group?.name || "Groupe"}</p>

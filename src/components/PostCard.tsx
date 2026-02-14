@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal } from "lucide-react";
+import { Heart, MessageCircle, Share2, Bookmark, MoreHorizontal, Flag, Trash2, X } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/lib/auth";
 import { useNavigate } from "react-router-dom";
@@ -26,17 +26,21 @@ interface PostCardProps {
   };
   isLiked?: boolean;
   isSaved?: boolean;
+  onDelete?: () => void;
 }
 
-export default function PostCard({ post, isLiked = false, isSaved = false }: PostCardProps) {
+export default function PostCard({ post, isLiked = false, isSaved = false, onDelete }: PostCardProps) {
   const [liked, setLiked] = useState(isLiked);
   const [saved, setSaved] = useState(isSaved);
   const [likeCount, setLikeCount] = useState(post.like_count);
   const [commentCount, setCommentCount] = useState(post.comment_count);
   const [animateLike, setAnimateLike] = useState(false);
   const [showComments, setShowComments] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const isOwner = user?.id === post.user_id;
 
   const handleLike = async () => {
     if (!user) return;
@@ -78,8 +82,22 @@ export default function PostCard({ post, isLiked = false, isSaved = false }: Pos
       navigator.clipboard.writeText(url);
       toast.success("Lien copié !");
     }
-    // Increment share count
     await supabase.from("posts").update({ share_count: (post.share_count || 0) + 1 }).eq("id", post.id);
+  };
+
+  const handleDelete = async () => {
+    if (!user || !isOwner) return;
+    await supabase.from("posts").delete().eq("id", post.id);
+    toast.success("Publication supprimée");
+    setShowMenu(false);
+    onDelete?.();
+  };
+
+  const handleReport = async () => {
+    if (!user) return;
+    await supabase.from("reports").insert({ reporter_id: user.id, reported_post_id: post.id, reason: "Contenu inapproprié" });
+    toast.success("Signalement envoyé");
+    setShowMenu(false);
   };
 
   const profile = post.profiles;
@@ -90,7 +108,7 @@ export default function PostCard({ post, isLiked = false, isSaved = false }: Pos
         {/* Header */}
         <div className="flex items-center justify-between p-4">
           <button onClick={() => navigate(`/user/${post.user_id}`)} className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold text-sm">
+            <div className="w-10 h-10 rounded-full gradient-primary flex items-center justify-center text-primary-foreground font-bold text-sm overflow-hidden">
               {profile?.avatar_url ? (
                 <img src={profile.avatar_url} className="w-full h-full rounded-full object-cover" alt="" />
               ) : (
@@ -102,20 +120,37 @@ export default function PostCard({ post, isLiked = false, isSaved = false }: Pos
               <p className="text-xs text-muted-foreground">@{profile?.username}</p>
             </div>
           </button>
-          <button className="text-muted-foreground hover:text-foreground p-1">
-            <MoreHorizontal size={18} />
-          </button>
+          <div className="relative">
+            <button onClick={() => setShowMenu(!showMenu)} className="text-muted-foreground hover:text-foreground p-1">
+              <MoreHorizontal size={18} />
+            </button>
+            {showMenu && (
+              <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowMenu(false)} />
+                <div className="absolute right-0 top-8 z-50 bg-card border border-border rounded-xl shadow-lg py-1 w-48">
+                  {isOwner && (
+                    <button onClick={handleDelete} className="w-full px-4 py-2.5 text-sm text-left hover:bg-secondary flex items-center gap-2 text-destructive">
+                      <Trash2 size={14} /> Supprimer
+                    </button>
+                  )}
+                  {!isOwner && (
+                    <button onClick={handleReport} className="w-full px-4 py-2.5 text-sm text-left hover:bg-secondary flex items-center gap-2 text-foreground">
+                      <Flag size={14} /> Signaler
+                    </button>
+                  )}
+                  <button onClick={() => { handleShare(); setShowMenu(false); }} className="w-full px-4 py-2.5 text-sm text-left hover:bg-secondary flex items-center gap-2 text-foreground">
+                    <Share2 size={14} /> Partager
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         </div>
 
-        {/* Media — auto aspect ratio */}
+        {/* Media */}
         {post.media_url && post.media_type === "image" && (
           <div className="w-full bg-secondary">
-            <img
-              src={post.media_url}
-              alt=""
-              className="w-full max-h-[600px] object-contain"
-              loading="lazy"
-            />
+            <img src={post.media_url} alt="" className="w-full max-h-[600px] object-contain" loading="lazy" />
           </div>
         )}
         {post.media_url && post.media_type === "video" && (

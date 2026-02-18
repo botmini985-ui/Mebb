@@ -2,10 +2,11 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 import BottomNav from "@/components/BottomNav";
-import { ArrowLeft, Heart, UserPlus, MessageCircle, AtSign, Shield, Bell } from "lucide-react";
+import { ArrowLeft, Heart, UserPlus, MessageCircle, AtSign, Shield, Bell, Trash2, Users } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
+import { toast } from "sonner";
 
 const typeIcons: Record<string, any> = {
   like: Heart,
@@ -15,6 +16,8 @@ const typeIcons: Record<string, any> = {
   mention: AtSign,
   admin: Shield,
   comment: MessageCircle,
+  group_add: Users,
+  verification: Shield,
 };
 
 const typeColors: Record<string, string> = {
@@ -25,6 +28,8 @@ const typeColors: Record<string, string> = {
   mention: "text-primary",
   admin: "text-destructive",
   comment: "text-foreground",
+  group_add: "text-primary",
+  verification: "text-emerald-500",
 };
 
 export default function Notifications() {
@@ -59,14 +64,42 @@ export default function Notifications() {
     return () => { supabase.removeChannel(channel); };
   }, [user]);
 
+  const handleClick = (n: any) => {
+    if (n.related_post_id) {
+      navigate(`/post/${n.related_post_id}`);
+    } else if (n.related_user_id) {
+      navigate(`/user/${n.related_user_id}`);
+    }
+  };
+
+  const handleDelete = async (id: string) => {
+    await supabase.from("notifications").delete().eq("id", id);
+    setNotifications((prev) => prev.filter((n) => n.id !== id));
+    toast.success("Notification supprimée");
+  };
+
+  const handleClearAll = async () => {
+    if (!user) return;
+    await supabase.from("notifications").delete().eq("user_id", user.id);
+    setNotifications([]);
+    toast.success("Toutes les notifications supprimées");
+  };
+
   return (
     <div className="min-h-screen pb-20">
       <header className="sticky top-0 z-40 glass border-b border-border">
-        <div className="flex items-center gap-3 px-4 h-14 max-w-lg mx-auto">
-          <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
-            <ArrowLeft size={22} />
-          </button>
-          <h2 className="font-display font-bold text-foreground">Notifications</h2>
+        <div className="flex items-center justify-between px-4 h-14 max-w-lg mx-auto">
+          <div className="flex items-center gap-3">
+            <button onClick={() => navigate(-1)} className="text-muted-foreground hover:text-foreground">
+              <ArrowLeft size={22} />
+            </button>
+            <h2 className="font-display font-bold text-foreground">Notifications</h2>
+          </div>
+          {notifications.length > 0 && (
+            <button onClick={handleClearAll} className="text-xs text-destructive hover:underline font-medium">
+              Tout effacer
+            </button>
+          )}
         </div>
       </header>
 
@@ -81,8 +114,13 @@ export default function Notifications() {
             {notifications.map((n) => {
               const Icon = typeIcons[n.type] || Bell;
               const color = typeColors[n.type] || "text-foreground";
+              const clickable = !!(n.related_post_id || n.related_user_id);
               return (
-                <div key={n.id} className={`flex items-start gap-3 px-4 py-3 ${!n.is_read ? "bg-secondary/30" : ""}`}>
+                <div
+                  key={n.id}
+                  className={`flex items-start gap-3 px-4 py-3 ${!n.is_read ? "bg-secondary/30" : ""} ${clickable ? "cursor-pointer active:bg-secondary/50" : ""}`}
+                  onClick={() => clickable && handleClick(n)}
+                >
                   <div className={`mt-0.5 ${color}`}><Icon size={20} /></div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-foreground font-medium">{n.title}</p>
@@ -91,6 +129,12 @@ export default function Notifications() {
                       {formatDistanceToNow(new Date(n.created_at), { addSuffix: true, locale: fr })}
                     </p>
                   </div>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDelete(n.id); }}
+                    className="text-muted-foreground hover:text-destructive p-1 shrink-0"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               );
             })}

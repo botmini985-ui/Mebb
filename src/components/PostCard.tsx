@@ -7,6 +7,7 @@ import { toast } from "sonner";
 import CommentsSheet from "@/components/CommentsSheet";
 import LinkifyText from "@/components/LinkifyText";
 import CertificationBadge from "@/components/CertificationBadge";
+import { sendNotification } from "@/lib/notifications";
 
 interface PostCardProps {
   post: {
@@ -65,6 +66,15 @@ export default function PostCard({ post, isLiked = false, isSaved = false, onDel
         setLikeCount((c) => c + 1);
         await supabase.from("post_likes").insert({ user_id: user.id, post_id: post.id });
         await supabase.from("posts").update({ like_count: likeCount + 1 }).eq("id", post.id);
+        // Send like notification
+        const { data: myProfile } = await supabase.from("profiles").select("username").eq("user_id", user.id).single();
+        sendNotification({
+          userId: post.user_id,
+          type: "like",
+          title: `${myProfile?.username || "Quelqu'un"} a aimé votre publication`,
+          relatedUserId: user.id,
+          relatedPostId: post.id,
+        });
       }
     } finally {
       setLiking(false);
@@ -88,6 +98,14 @@ export default function PostCard({ post, isLiked = false, isSaved = false, onDel
     try {
       await supabase.from("post_likes").insert({ user_id: user.id, post_id: post.id });
       await supabase.from("posts").update({ like_count: likeCount + 1 }).eq("id", post.id);
+      const { data: myProfile } = await supabase.from("profiles").select("username").eq("user_id", user.id).single();
+      sendNotification({
+        userId: post.user_id,
+        type: "like",
+        title: `${myProfile?.username || "Quelqu'un"} a aimé votre publication`,
+        relatedUserId: user.id,
+        relatedPostId: post.id,
+      });
     } finally {
       setLiking(false);
     }

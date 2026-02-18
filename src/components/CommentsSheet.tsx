@@ -5,6 +5,7 @@ import { X, Send, Trash2 } from "lucide-react";
 import { formatDistanceToNow } from "date-fns";
 import { fr } from "date-fns/locale";
 import { toast } from "sonner";
+import { sendNotification } from "@/lib/notifications";
 
 interface CommentsSheetProps {
   postId: string;
@@ -53,6 +54,21 @@ export default function CommentsSheet({ postId, onClose, onCountChange }: Commen
     const newCount = comments.length + 1;
     await supabase.from("posts").update({ comment_count: newCount }).eq("id", postId);
     onCountChange(newCount);
+
+    // Send comment notification to post owner
+    const { data: postData } = await supabase.from("posts").select("user_id").eq("id", postId).single();
+    if (postData) {
+      const { data: myProfile } = await supabase.from("profiles").select("username").eq("user_id", user.id).single();
+      sendNotification({
+        userId: postData.user_id,
+        type: "comment",
+        title: `${myProfile?.username || "Quelqu'un"} a commenté votre publication`,
+        body: input.trim().substring(0, 100),
+        relatedUserId: user.id,
+        relatedPostId: postId,
+      });
+    }
+
     setInput("");
     setLoading(false);
     fetchComments();

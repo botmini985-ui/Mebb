@@ -6,6 +6,7 @@ import PostCard from "@/components/PostCard";
 import { ArrowLeft, Lock, Flag, UserPlus, UserMinus, Grid3X3, Bookmark, Heart } from "lucide-react";
 import { toast } from "sonner";
 import CertificationBadge from "@/components/CertificationBadge";
+import { sendNotification } from "@/lib/notifications";
 
 export default function UserProfile() {
   const { userId } = useParams<{ userId: string }>();
@@ -101,6 +102,17 @@ export default function UserProfile() {
       setFollowStatus(status);
       if (status === "accepted") { setIsFollowing(true); setFollowers((c) => c + 1); }
       else toast.info("Demande envoyée");
+
+      // Send follow notification
+      const { data: myProfile } = await supabase.from("profiles").select("username").eq("user_id", user.id).single();
+      sendNotification({
+        userId,
+        type: status === "pending" ? "follow_request" : "follow",
+        title: status === "pending"
+          ? `${myProfile?.username || "Quelqu'un"} vous a envoyé une demande d'abonnement`
+          : `${myProfile?.username || "Quelqu'un"} a commencé à vous suivre`,
+        relatedUserId: user.id,
+      });
     }
   };
 

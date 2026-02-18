@@ -17,6 +17,13 @@ export default function Settings() {
   const [bio, setBio] = useState("");
   const [avatarUrl, setAvatarUrl] = useState("");
   const [clan, setClan] = useState("");
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      supabase.rpc("has_role", { _user_id: user.id, _role: "admin" }).then(({ data }) => setIsAdmin(!!data));
+    }
+  }, [user]);
 
   useEffect(() => {
     if (user) fetchProfile();
@@ -191,6 +198,20 @@ export default function Settings() {
             </button>
           </div>
         </div>
+
+        {/* Admin */}
+        {isAdmin && (
+          <div className="space-y-2">
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider px-1">Administration</h3>
+            <div className="bg-card rounded-2xl border border-border overflow-hidden">
+              <button onClick={() => navigate("/admin")} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-secondary/50 transition-colors text-left">
+                <Shield size={20} className="text-primary" />
+                <span className="flex-1 text-sm font-medium text-foreground">Panel Admin</span>
+                <ChevronRight size={16} className="text-muted-foreground" />
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Logout */}
         <button onClick={handleSignOut}

@@ -24,6 +24,7 @@ import Loop from "./pages/Loop";
 import PostDetail from "./pages/PostDetail";
 import CertificationRequest from "./pages/CertificationRequest";
 import Privacy from "./pages/Privacy";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +56,7 @@ const App = () => (
             <Route path="*" element={<NotFound />} />
             <Route path="/certification" element={<CertificationRequest />} />
             <Route path="/privacy" element={<Privacy />} />
+            <Route path="/admin" element={<Admin />} />
           </Routes>
         </AuthProvider>
       </BrowserRouter>

@@ -26,6 +26,15 @@ export default function Signup() {
     if (password.length < 6) { toast.error("6 caractères minimum"); return; }
 
     setLoading(true);
+
+    // Check if email is banned
+    const banCheck = await supabase.functions.invoke("check-banned-email", { body: { email } });
+    if (banCheck.data?.banned) {
+      setLoading(false);
+      toast.error("Cette adresse email a été bannie. Inscription impossible.");
+      return;
+    }
+
     const { error } = await signUp(email, password, username, clan);
     setLoading(false);
     if (error) { toast.error(error.message); return; }

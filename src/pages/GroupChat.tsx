@@ -117,8 +117,8 @@ export default function GroupChat() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
-      <header className="sticky top-0 z-40 glass border-b border-border shrink-0">
+    <div className="h-screen flex flex-col overflow-hidden">
+      <header className="z-40 glass border-b border-border shrink-0">
         <div className="flex items-center gap-3 px-4 h-14 max-w-lg mx-auto">
           <button onClick={() => navigate("/chat")} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft size={22} />

@@ -1,1 +1,7 @@
 project_id = "jecsxunskysldvpqgkdr"
+
+[functions.admin-delete-account]
+verify_jwt = false
+
+[functions.check-banned-email]
+verify_jwt = false

@@ -5,7 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Purge Hub',
   webDir: 'dist',
   server: {
-    url: 'https://purge-hub-social.vercel.app',
+    url: 'https://purge-hub-social-einm.vercel.app',
     cleartext: true,
   },
 };

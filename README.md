@@ -64,6 +64,20 @@ This project is built with:
 
 Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
 
+## 📱 Générer l'APK Android (depuis GitHub, sans PC)
+
+### Étapes :
+
+1. **Exporter vers GitHub** : Dans Lovable, allez dans Settings → GitHub → Connect project, puis créez le repo.
+
+2. **Lancer le build** : Sur GitHub, allez dans votre repo → onglet **Actions** → cliquez sur **"Build Android APK"** dans la liste à gauche → cliquez sur **"Run workflow"** → **"Run workflow"** (bouton vert).
+
+3. **Télécharger l'APK** : Une fois le build terminé (⏱️ ~5-10 min), cliquez sur le run terminé → descendez dans **"Artifacts"** → téléchargez **"app-debug"**. C'est votre fichier APK !
+
+4. **Installer sur votre téléphone** : Ouvrez le fichier `.apk` téléchargé sur votre téléphone Android. Si demandé, autorisez l'installation depuis des sources inconnues dans les paramètres.
+
+> **Note** : C'est un APK de debug. Pour publier sur le Play Store, il faudra signer l'APK avec une clé de release.
+
 ## Can I connect a custom domain to my Lovable project?
 
 Yes, you can!

@@ -31,18 +31,22 @@ jobs:
       - name: Build web app
         run: npm run build
 
-      - name: Add Android platform
-        run: npx cap add android || true
-
-      - name: Sync project
+      - name: Sync Capacitor
         run: npx cap sync android
 
       - name: Make gradlew executable
-        run: chmod +x android/gradlew
+        run: |
+          if [ -f "./android/gradlew" ]; then
+            chmod +x ./android/gradlew
+          else
+            echo "gradlew not found!"
+            exit 1
+          fi
 
       - name: Build APK
-        working-directory: android
-        run: ./gradlew assembleDebug
+        run: |
+          cd android
+          ./gradlew assembleDebug
 
       - name: Upload APK
         uses: actions/upload-artifact@v4

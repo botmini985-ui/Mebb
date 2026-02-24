@@ -6,6 +6,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+
     steps:
       - uses: actions/checkout@v4
 
@@ -27,12 +28,20 @@ jobs:
       - name: Build web app
         run: npm run build
 
-      - name: Setup Capacitor Android
+      - name: Install Capacitor Android
+        run: npm install @capacitor/android
+
+      - name: Initialize Capacitor (if needed)
         run: |
-          if [ ! -d "android" ]; then
-            npx cap add android
+          if [ ! -f "capacitor.config.json" ]; then
+            npx cap init botmini985-ui com.botmini985.ui --web-dir=dist
           fi
-          npx cap sync android
+
+      - name: Add Android platform
+        run: npx cap add android || echo "Android already exists"
+
+      - name: Sync project
+        run: npx cap sync android
 
       - name: Make gradlew executable
         run: chmod +x android/gradlew
